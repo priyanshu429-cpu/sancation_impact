@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+transformers==4.41.2
+pydantic
+networkx
+numpy==1.26.4
+scikit-learn

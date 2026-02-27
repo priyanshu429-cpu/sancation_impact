@@ -1,0 +1,10 @@
+__pycache__
+*.pt
+*.pth
+*.bin
+*.onnx
+*.ckpt
+.env
+venv
+node_modules
+.git
