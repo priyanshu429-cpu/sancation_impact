@@ -1,8 +1,9 @@
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Body
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from fastapi.responses import FileResponse
+
 import torch
 import os
 import requests
@@ -31,8 +32,6 @@ app.add_middleware(
 
 risk_model = None
 gnn_model = None
-tokenizer = None
-nlp_model = None
 
 
 def load_risk_model():
@@ -63,15 +62,6 @@ def load_gnn_model():
     return gnn_model
 
 
-def load_nlp():
-    global tokenizer, nlp_model
-    if tokenizer is None:
-        print("Loading lightweight NLP model...")
-        tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small")
-        nlp_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
-    return tokenizer, nlp_model
-
-
 # ==============================
 # Severity Model
 # ==============================
@@ -99,12 +89,6 @@ class PolicyInput(BaseModel):
     energy: int
     issuer_strength: float
     binding: int
-
-
-class ExplanationInput(BaseModel):
-    metric: str
-    value: float
-    context: dict
 
 
 class CountryInput(BaseModel):
@@ -155,31 +139,52 @@ def predict(policy: PolicyInput):
 
 
 # ==============================
-# NLP Explanation (LAZY LOAD)
+# NLP Explanation (FIXED LIGHTWEIGHT)
 # ==============================
 
 @app.post("/explain")
-def explain_metric(data: ExplanationInput):
+async def explain_metric(data: dict = Body(...)):
+    try:
+        metric = data.get("metric")
+        value = data.get("value")
+        context = data.get("context", {})
+        country = context.get("country", "this country")
 
-    tokenizer, nlp_model = load_nlp()
+        if metric == "gdp":
+            if value < 0:
+                explanation = (
+                    f"{country}'s GDP contraction indicates economic slowdown. "
+                    "Sanctions likely reduced trade flows and foreign investments."
+                )
+            elif value < 3:
+                explanation = (
+                    f"{country}'s GDP growth is moderate. Sanctions may be limiting expansion."
+                )
+            else:
+                explanation = (
+                    f"{country} shows strong GDP growth despite sanctions, indicating resilience."
+                )
 
-    prompt = f"""
-Explain why {data.metric.upper()} changed for {data.context.get('country', 'this country')}.
-Observed value: {data.value:.2f}
-Give a short economic explanation in 4 sentences.
-"""
+        elif metric == "trade":
+            explanation = (
+                f"Trade openness at {value}% reflects exposure to global markets. "
+                "Sanctions can disrupt imports and exports."
+            )
 
-    inputs = tokenizer(prompt, return_tensors="pt")
+        elif metric == "fdi":
+            explanation = (
+                f"FDI trend of {value} billion USD reflects investor confidence. "
+                "Sanctions often reduce foreign investment."
+            )
 
-    outputs = nlp_model.generate(
-        **inputs,
-        max_new_tokens=80,
-        temperature=0.5,
-    )
+        else:
+            explanation = f"{metric} value is {value}, reflecting economic conditions."
 
-    explanation = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return {"explanation": explanation}
 
-    return {"explanation": explanation}
+    except Exception as e:
+        print("Explain error:", e)
+        return {"explanation": "Error generating explanation"}
 
 
 # ==============================
@@ -226,16 +231,14 @@ def macro_risk(data: CountryInput):
         "country": data.country_code,
         "risk_score": risk_score
     }
-from fastapi.responses import FileResponse
 
-@app.get("/")
-def serve_frontend():
-    return FileResponse("dist/index.html")
 
-app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
+# ==============================
+# Macro Timeseries
+# ==============================
+
 @app.get("/macro-timeseries")
 def macro_timeseries(country_code: str):
-    # Dummy data (you can improve later)
     return [
         {"year": 2018, "gdp": 2.5, "trade": 1.2, "fdi": 0.8},
         {"year": 2019, "gdp": 3.0, "trade": 1.5, "fdi": 1.0},
@@ -245,3 +248,13 @@ def macro_timeseries(country_code: str):
     ]
 
 
+# ==============================
+# Serve Frontend
+# ==============================
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse("dist/index.html")
+
+
+app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
