@@ -233,4 +233,15 @@ def serve_frontend():
     return FileResponse("dist/index.html")
 
 app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
+@app.get("/macro-timeseries")
+def macro_timeseries(country_code: str):
+    # Dummy data (you can improve later)
+    return [
+        {"year": 2018, "gdp": 2.5, "trade": 1.2, "fdi": 0.8},
+        {"year": 2019, "gdp": 3.0, "trade": 1.5, "fdi": 1.0},
+        {"year": 2020, "gdp": -1.2, "trade": -0.5, "fdi": 0.3},
+        {"year": 2021, "gdp": 6.5, "trade": 2.0, "fdi": 1.5},
+        {"year": 2022, "gdp": 5.8, "trade": 1.8, "fdi": 1.2},
+    ]
+
 
