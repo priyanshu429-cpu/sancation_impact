@@ -245,8 +245,10 @@ def macro_timeseries(country_code: str):
         {"year": 2020, "gdp": -1.2, "trade": -0.5, "fdi": 0.3},
         {"year": 2021, "gdp": 6.5, "trade": 2.0, "fdi": 1.5},
         {"year": 2022, "gdp": 5.8, "trade": 1.8, "fdi": 1.2},
+        {"year": 2023, "gdp": 6.2, "trade": 2.1, "fdi": 1.4},
+        {"year": 2024, "gdp": 6.7, "trade": 2.3, "fdi": 1.6},
+        {"year": 2025, "gdp": 7.0, "trade": 2.5, "fdi": 1.8},
     ]
-
 
 # ==============================
 # Serve Frontend
