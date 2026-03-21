@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, Query
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -225,3 +226,11 @@ def macro_risk(data: CountryInput):
         "country": data.country_code,
         "risk_score": risk_score
     }
+from fastapi.responses import FileResponse
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse("dist/index.html")
+
+app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
+
